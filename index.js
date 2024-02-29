@@ -36,8 +36,9 @@ app.post("/api/users", (req, res) => {
     })
 })
 
-app.get("/api/users", (req, res) = {
-
+app.get("/api/users", async (req, res) => {
+  const users = await user.find({})
+  res.json(users)
 })
 
 //
