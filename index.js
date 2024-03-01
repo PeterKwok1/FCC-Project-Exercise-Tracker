@@ -15,18 +15,26 @@ app.get('/', (req, res) => {
 
 // my code
 app.use("/api/users", bodyParser.urlencoded({ extended: true }))
-app.use("/api/users", bodyParser.json())
+// app.use("/api/users", bodyParser.json())
 
 mongoose.connect(process.env.MONGODB_URI)
 
 const Schema = mongoose.Schema
+const logSchema = new Schema({
+  description: String,
+  duration: Number,
+  date: Date
+})
+const log = mongoose.model('Log', logSchema)
 const userSchema = new Schema({
-  username: String
+  username: String,
+  log: [logSchema]
 })
 const user = mongoose.model('User', userSchema)
 
 app.post("/api/users", (req, res) => {
-  const userToSave = user({ username: req.body.username })
+  const { username } = req.body
+  const userToSave = user({ username: username })
   userToSave.save()
     .then((savedUser) => {
       res.json(savedUser)
@@ -39,6 +47,29 @@ app.post("/api/users", (req, res) => {
 app.get("/api/users", async (req, res) => {
   const users = await user.find({})
   res.json(users)
+})
+
+// try promises chaining and error catching using new promise, then, catch, resolve, reject
+// https://javascript.info/promise-chaining
+app.post("/api/users/:_id/exercises", async (req, res) => {
+  const { _id } = req.params
+  const { description, duration } = req.body
+  let date = new Date(req.body.date)
+  if (date.length === 0) {
+    date = new Date(Date.now)
+  }
+  const logToSave = log({ description: description, duration: duration, date: date })
+  user.findById(_id)
+    .then((userFound) => {
+      userFound.log.push(logToSave)
+      return userFound.save()
+    })
+    .then((savedUser) => {
+      res.json(savedUser)
+    })
+    .catch((err) => {
+      res.send(err)
+    })
 })
 
 //
