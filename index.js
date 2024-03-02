@@ -49,8 +49,7 @@ app.get("/api/users", async (req, res) => {
   res.json(users)
 })
 
-// try promises chaining and error catching using new promise, then, catch, resolve, reject
-// https://javascript.info/promise-chaining
+// https://www.youtube.com/watch?v=EH5gtnwiikU&list=PLWkguCWKqN9OwcbdYm4nUIXnA2IoXX0LI&index=6
 app.post("/api/users/:_id/exercises", async (req, res) => {
   const { _id } = req.params
   const { description, duration } = req.body
