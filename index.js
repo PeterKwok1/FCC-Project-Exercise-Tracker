@@ -49,13 +49,13 @@ app.get("/api/users", async (req, res) => {
   res.json(users)
 })
 
-// https://www.youtube.com/watch?v=EH5gtnwiikU&list=PLWkguCWKqN9OwcbdYm4nUIXnA2IoXX0LI&index=6
 app.post("/api/users/:_id/exercises", async (req, res) => {
   const { _id } = req.params
-  const { description, duration } = req.body
-  let date = new Date(req.body.date)
+  let { description, duration, date } = req.body
   if (date.length === 0) {
-    date = new Date(Date.now)
+    date = new Date(Date.now())
+  } else {
+    date = new Date(req.body.date)
   }
   const logToSave = log({ description: description, duration: duration, date: date })
   user.findById(_id)
@@ -69,6 +69,15 @@ app.post("/api/users/:_id/exercises", async (req, res) => {
     .catch((err) => {
       res.send(err)
     })
+})
+
+// aggregation: https://www.youtube.com/watch?v=xjaE20kM1lw&list=PLWkguCWKqN9OwcbdYm4nUIXnA2IoXX0LI&index=12
+// test api
+app.get("/api/test", async (req, res) => {
+  const agg = await user.aggregate([
+    { $group: { _id: "$log.description" } }
+  ])
+  res.json(agg)
 })
 
 //
