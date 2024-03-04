@@ -71,11 +71,12 @@ app.post("/api/users/:_id/exercises", async (req, res) => {
     })
 })
 
-// aggregation: https://www.youtube.com/watch?v=xjaE20kM1lw&list=PLWkguCWKqN9OwcbdYm4nUIXnA2IoXX0LI&index=12
+// aggregation: https://www.youtube.com/watch?v=mMr4t45FIdQ&list=PLWkguCWKqN9OwcbdYm4nUIXnA2IoXX0LI&index=21
 // test api
 app.get("/api/test", async (req, res) => {
   const agg = await user.aggregate([
-    { $group: { _id: "$log.description" } }
+    { $match: { $or: [{ username: "Greg" }, { username: "Tom" }] } },
+    { $sort: { username: -1 } }
   ])
   res.json(agg)
 })
