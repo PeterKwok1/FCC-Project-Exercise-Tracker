@@ -14,6 +14,8 @@ app.get('/', (req, res) => {
 });
 
 // my code
+// Used https://www.youtube.com/playlist?list=PLWkguCWKqN9OwcbdYm4nUIXnA2IoXX0LI to learn mongodb aggregation.
+
 app.use("/api/users", bodyParser.urlencoded({ extended: true }))
 // app.use("/api/users", bodyParser.json())
 
@@ -71,12 +73,14 @@ app.post("/api/users/:_id/exercises", async (req, res) => {
     })
 })
 
-// aggregation: https://www.youtube.com/watch?v=mMr4t45FIdQ&list=PLWkguCWKqN9OwcbdYm4nUIXnA2IoXX0LI&index=21
-// test api
+// test 
 app.get("/api/test", async (req, res) => {
   const agg = await user.aggregate([
     { $match: { $or: [{ username: "Greg" }, { username: "Tom" }] } },
-    { $sort: { username: -1 } }
+    // { $project: { descripton: "$log.description" } },
+    { $unwind: "$log" },
+    { $group: { _id: "$log" } },
+    { $project: { _id: 0, test: '$_id.description', type: { $type: '$_id.description' } } }
   ])
   res.json(agg)
 })
