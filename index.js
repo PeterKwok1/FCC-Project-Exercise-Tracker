@@ -16,6 +16,8 @@ app.get('/', (req, res) => {
 // my code
 // Used https://www.youtube.com/playlist?list=PLWkguCWKqN9OwcbdYm4nUIXnA2IoXX0LI to learn mongodb aggregation.
 
+// I don't know what it wants from me. My results match. Will use tutorial. 
+
 app.use("/api/users", bodyParser.urlencoded({ extended: true }))
 // app.use("/api/users", bodyParser.json())
 
@@ -30,7 +32,7 @@ const logSchema = new Schema({
 const log = mongoose.model('Log', logSchema)
 const userSchema = new Schema({
   username: String,
-  log: [logSchema]
+  // log: [logSchema]
 })
 const user = mongoose.model('User', userSchema)
 
@@ -54,35 +56,64 @@ app.get("/api/users", async (req, res) => {
 app.post("/api/users/:_id/exercises", async (req, res) => {
   const { _id } = req.params
   let { description, duration, date } = req.body
-  if (date.length === 0) {
-    date = new Date(Date.now())
-  } else {
+  if (date) {
     date = new Date(req.body.date)
+  } else {
+    date = new Date(Date.now())
   }
-  const logToSave = log({ description: description, duration: duration, date: date })
-  user.findById(_id)
+
+  await user.findById(_id)
     .then((userFound) => {
-      userFound.log.push(logToSave)
-      return userFound.save()
-    })
-    .then((savedUser) => {
-      res.json(savedUser)
-    })
-    .catch((err) => {
+      userFound.description = description
+      userFound.duration = duration
+      userFound.date = date
+      res.json(userFound)
+    }).catch((err) => {
       res.send(err)
     })
+  // const logToSave = log({ description: description, duration: duration, date: date })
+  // await user.findById(_id)
+  //   .then((userFound) => {
+  //     userFound.log.push(logToSave)
+  //     return userFound.save()
+  //   })
+  // .then((savedUser) => {
+  //   // mongoose queries return mongoose documents, not objects
+  //   const entry = savedUser.log.pop()
+  //   const summary = {}
+  //   summary._id = savedUser._id
+  //   summary.username = savedUser.username
+  //   summary.date = entry.date.toDateString()
+  //   summary.duration = entry.duration
+  //   summary.description = entry.description
+  //   res.json(summary)
+  // })
+  //   .catch ((err) => {
+  //   res.send(err)
+  // })
+  // const summary = await user.aggregate([
+  //   { $match: { _id: new mongoose.Types.ObjectId(_id) } },
+  //   { $project: { username: 1, last_entry: { $last: "$log" } } },
+  //   { $project: { username: 1, date: "$last_entry.date", duration: "$last_entry.duration", description: "$last_entry.description" } }
+  // ])
+  // summary[0].date = summary[0].date.toDateString()
+  // res.json(summary[0])
 })
 
 // test 
 app.get("/api/test", async (req, res) => {
   const agg = await user.aggregate([
-    { $match: { $or: [{ username: "Greg" }, { username: "Tom" }] } },
-    // { $project: { descripton: "$log.description" } },
-    { $unwind: "$log" },
-    { $group: { _id: "$log" } },
-    { $project: { _id: 0, test: '$_id.description', type: { $type: '$_id.description' } } }
+    { $match: { _id: new mongoose.Types.ObjectId("65e40d0a184dcbf9e0101beb") } },
+    // { $project: { username: 1, descripton: "$log.description" } }
+    // { $unwind: "$log" },
+    // { $group: { _id: "$log" } },
+    // { $project: { _id: 0, test: '$_id.description', type: { $type: '$_id.description' } } }
   ])
-  res.json(agg)
+  const o = agg[0]
+  const t = o.aggregate([
+    { $match: { _id: new mongoose.Types.ObjectId("65e40d0a184dcbf9e0101beb") } }
+  ])
+  res.json(t)
 })
 
 //
