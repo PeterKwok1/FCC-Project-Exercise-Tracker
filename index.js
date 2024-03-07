@@ -16,8 +16,10 @@ app.get('/', (req, res) => {
 // my code
 
 // Used 
-// https://www.youtube.com/playlist?list=PLWkguCWKqN9OwcbdYm4nUIXnA2IoXX0LI to learn mongodb aggregation.
-// https://www.youtube.com/watch?v=Xjaksspeq7Y
+// https://www.youtube.com/playlist?list=PLWkguCWKqN9OwcbdYm4nUIXnA2IoXX0LI - mongodb aggregation (did not end up using)
+// https://www.youtube.com/watch?v=Xjaksspeq7Y - (he creates a user table, an exercises table with user_id, and joins twice, once for the exercise, another for the log)
+
+// Could not get it to pass the test despite it seeming like it works: "The response returned from POST /api/users/:_id/exercises will be the user object with the exercise fields added."
 
 mongoose.connect(process.env.MONGODB_URI)
 
@@ -63,13 +65,13 @@ app.post("/api/users/:_id/exercises", async (req, res) => {
   const id = req.params._id
   const { description, duration, date } = req.body
   try {
-    const user = await User.findById(id)
+    const user = await User.findById(id) // this throws an error so if(!user) is redundant I think
     if (!user) {
       res.send("No user found")
     } else {
       const exerciseToSave = new Exercise({
         user_id: user._id,
-        description,
+        description, // short for variable value -> key value        
         duration,
         date: date ? new Date(date) : new Date()
       })
@@ -77,9 +79,9 @@ app.post("/api/users/:_id/exercises", async (req, res) => {
       res.json({
         _id: user._id,
         username: user.username,
-        description: exercise.description,
+        date: new Date(exercise.date).toDateString(),
         duration: exercise.duration,
-        date: new Date(exercise.date).toDateString()
+        description: exercise.description
       })
     }
   } catch (err) {
@@ -110,7 +112,25 @@ app.get("/api/users/:_id/logs", async (req, res) => {
   if (from || to) {
     filter.date = dateObj
   }
+
+  const exercises = await Exercise.find(filter).limit(+limit ?? 500) // + -> Number, ?? = Nullish coalescing operator (returns left if right is null, else returns left)
+
+  const log = exercises.map((e) => ({
+    description: e.description,
+    duration: e.duration,
+    date: e.date.toDateString()
+  }))
+
+  res.json({
+    username: user.username,
+    count: exercises.length, // $count is faster 
+    _id: user._id,
+    log
+  })
 })
+
+// 
+
 
 //   await user.findById(_id)
 //     .then((userFound) => {
