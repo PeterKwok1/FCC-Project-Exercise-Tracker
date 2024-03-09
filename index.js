@@ -21,6 +21,9 @@ app.get('/', (req, res) => {
 
 // Could not get it to pass the test despite it seeming like it works: "The response returned from POST /api/users/:_id/exercises will be the user object with the exercise fields added."
 
+// I have a strong suspicion it is because of date formating. Review date format and change both entered date and Date().now to utc 
+// else, try gitpod, google, then move on. 
+
 mongoose.connect(process.env.MONGODB_URI)
 
 const { Schema } = mongoose
@@ -65,9 +68,9 @@ app.post("/api/users/:_id/exercises", async (req, res) => {
   const id = req.params._id
   const { description, duration, date } = req.body
   try {
-    const user = await User.findById(id) // this throws an error so if(!user) is redundant I think
-    if (!user) {
-      res.send("No user found")
+    const user = await User.findById(id) // throws an error if the id is not a valid mongoose object id
+    if (!user) { // if the object id isn't found
+      res.send("Could not find user")
     } else {
       const exerciseToSave = new Exercise({
         user_id: user._id,
@@ -79,9 +82,9 @@ app.post("/api/users/:_id/exercises", async (req, res) => {
       res.json({
         _id: user._id,
         username: user.username,
-        date: new Date(exercise.date).toDateString(),
+        description: exercise.description,
         duration: exercise.duration,
-        description: exercise.description
+        date: exercise.date.toDateString()
       })
     }
   } catch (err) {
@@ -90,104 +93,57 @@ app.post("/api/users/:_id/exercises", async (req, res) => {
   }
 })
 
-// up to https://youtu.be/Xjaksspeq7Y?t=1205
 app.get("/api/users/:_id/logs", async (req, res) => {
-  const { from, to, limit } = req.query
   const id = req.params._id
-  const user = await User.findById(id)
-  if (!user) {
-    res.send("Could not find user")
-    return
-  }
-  let dateObj = {}
-  if (from) {
-    dateObj["$gte"] = new Date(from)
-  }
-  if (to) {
-    dateObj["$lte"] = new Date(to)
-  }
-  let filter = {
-    user_id: id
-  }
-  if (from || to) {
-    filter.date = dateObj
-  }
+  const { from, to, limit } = req.query
+  try {
+    const user = await User.findById(id)
+    if (!user) {
+      res.send("Could not find user")
+      return
+    }
+    let dateObj = {}
+    if (from) {
+      dateObj["$gte"] = new Date(from)
+    }
+    if (to) {
+      dateObj["$lte"] = new Date(to)
+    }
+    let filter = {
+      user_id: id
+    }
+    if (from || to) {
+      filter.date = dateObj
+    }
 
-  const exercises = await Exercise.find(filter).limit(+limit ?? 500) // + -> Number, ?? = Nullish coalescing operator (returns left if right is null, else returns left)
+    const exercises = await Exercise.find(filter).limit(+limit ?? 500) // + -> Number, ?? = Nullish coalescing operator (returns left if right is null, else returns left)
 
-  const log = exercises.map((e) => ({
-    description: e.description,
-    duration: e.duration,
-    date: e.date.toDateString()
-  }))
+    const count = await Exercise.aggregate([
+      { $match: filter },
+      { $count: 'Count' }
+    ])
 
-  res.json({
-    username: user.username,
-    count: exercises.length, // $count is faster 
-    _id: user._id,
-    log
-  })
+    const log = exercises.map((e) => ({ // an alternative is to use mongoose $dateToString
+      description: e.description,
+      duration: e.duration,
+      date: e.date.toDateString()
+    }))
+
+    res.json({
+      username: user.username,
+      count: count[0].Count,
+      _id: user._id,
+      log
+    })
+  } catch (err) {
+    console.error(err)
+    res.send("Error getting user logs")
+  }
 })
 
-// 
-
-
-//   await user.findById(_id)
-//     .then((userFound) => {
-//       userFound.description = description
-//       userFound.duration = duration
-//       userFound.date = date
-//       res.json(userFound)
-//     }).catch((err) => {
-//       res.send(err)
-//     })
-//   // const logToSave = log({ description: description, duration: duration, date: date })
-//   // await user.findById(_id)
-//   //   .then((userFound) => {
-//   //     userFound.log.push(logToSave)
-//   //     return userFound.save()
-//   //   })
-//   // .then((savedUser) => {
-//   //   // mongoose queries return mongoose documents, not objects
-//   //   const entry = savedUser.log.pop()
-//   //   const summary = {}
-//   //   summary._id = savedUser._id
-//   //   summary.username = savedUser.username
-//   //   summary.date = entry.date.toDateString()
-//   //   summary.duration = entry.duration
-//   //   summary.description = entry.description
-//   //   res.json(summary)
-//   // })
-//   //   .catch ((err) => {
-//   //   res.send(err)
-//   // })
-//   // const summary = await user.aggregate([
-//   //   { $match: { _id: new mongoose.Types.ObjectId(_id) } },
-//   //   { $project: { username: 1, last_entry: { $last: "$log" } } },
-//   //   { $project: { username: 1, date: "$last_entry.date", duration: "$last_entry.duration", description: "$last_entry.description" } }
-//   // ])
-//   // summary[0].date = summary[0].date.toDateString()
-//   // res.json(summary[0])
-// })
-
-// // test 
-// app.get("/api/test", async (req, res) => {
-//   const agg = await user.aggregate([
-//     { $match: { _id: new mongoose.Types.ObjectId("65e40d0a184dcbf9e0101beb") } },
-//     // { $project: { username: 1, descripton: "$log.description" } }
-//     // { $unwind: "$log" },
-//     // { $group: { _id: "$log" } },
-//     // { $project: { _id: 0, test: '$_id.description', type: { $type: '$_id.description' } } }
-//   ])
-//   const o = agg[0]
-//   const t = o.aggregate([
-//     { $match: { _id: new mongoose.Types.ObjectId("65e40d0a184dcbf9e0101beb") } }
-//   ])
-//   res.json(t)
-// })
-
-// //
+//
 
 const listener = app.listen(process.env.PORT || 3000, () => {
   console.log('Your app is listening on port ' + listener.address().port)
 })
+
