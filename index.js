@@ -16,13 +16,10 @@ app.get('/', (req, res) => {
 // my code
 
 // Used 
-// https://www.youtube.com/playlist?list=PLWkguCWKqN9OwcbdYm4nUIXnA2IoXX0LI - mongodb aggregation (did not end up using)
-// https://www.youtube.com/watch?v=Xjaksspeq7Y - (he creates a user table, an exercises table with user_id, and joins twice, once for the exercise, another for the log)
-
-// Could not get it to pass the test despite it seeming like it works: "The response returned from POST /api/users/:_id/exercises will be the user object with the exercise fields added."
-
-// I have a strong suspicion it is because of date formating. Review date format and change both entered date and Date().now to utc 
-// else, try gitpod, google, then move on. 
+// https://www.youtube.com/playlist?list=PLWkguCWKqN9OwcbdYm4nUIXnA2IoXX0LI - mongodb aggregation (was not necessary)
+// https://www.youtube.com/watch?v=Xjaksspeq7Y
+// he creates a user table, an exercises table with user_id, and joins twice, once for the exercise, another for the log
+// however, he didn't format the dates consistently so certain tests wouldn't pass. 
 
 mongoose.connect(process.env.MONGODB_URI)
 
@@ -76,15 +73,17 @@ app.post("/api/users/:_id/exercises", async (req, res) => {
         user_id: user._id,
         description, // short for variable value -> key value        
         duration,
-        date: date ? new Date(date) : new Date()
+        date: date ? new Date(date + 'T00:00:00.000') : new Date() // we are assuming they are entering local time 
       })
+      // date constructor saves in UTC.
+      // date constructor assumes param is in local time if T... is included and Z is not specifed. 
       const exercise = await exerciseToSave.save()
       res.json({
         _id: user._id,
         username: user.username,
-        description: exercise.description,
+        date: exercise.date.toDateString(), // toDateString() returns local time. 
         duration: exercise.duration,
-        date: exercise.date.toDateString()
+        description: exercise.description
       })
     }
   } catch (err) {
